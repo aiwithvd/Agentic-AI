@@ -1,10 +1,11 @@
-"""Define a simple chatbot agent.
+"""LangGraph chatbot agent backed by a real LLM via LangChain."""
 
-This agent returns a predefined response without using an actual LLM.
-"""
+from __future__ import annotations
 
 from typing import Any, Dict
 
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph
 
@@ -12,27 +13,29 @@ from agent.configuration import Configuration
 from agent.state import State
 
 
-async def my_node(state: State, config: RunnableConfig) -> Dict[str, Any]:
-    """Each node does work."""
+async def call_model(state: State, config: RunnableConfig) -> Dict[str, Any]:
+    """Invoke the configured LLM with the current message history."""
     configuration = Configuration.from_runnable_config(config)
-    # configuration = Configuration.from_runnable_config(config)
-    # You can use runtime configuration to alter the behavior of your
-    # graph.
-    return {
-        "changeme": "output from my_node. "
-        f"Configured with {configuration.my_configurable_param}"
-    }
+
+    llm = ChatAnthropic(model=configuration.model)
+
+    # Prepend the system prompt so it always takes effect regardless of
+    # what messages are already in state.
+    messages = [SystemMessage(content=configuration.system_prompt)] + list(
+        state.messages
+    )
+
+    response = await llm.ainvoke(messages)
+    return {"messages": [response]}
 
 
-# Define a new graph
+# ── Graph construction ────────────────────────────────────────────────────────
+
 workflow = StateGraph(State, config_schema=Configuration)
+workflow.add_node("call_model", call_model)
+workflow.add_edge("__start__", "call_model")
 
-# Add the node to the graph
-workflow.add_node("my_node", my_node)
-
-# Set the entrypoint as `call_model`
-workflow.add_edge("__start__", "my_node")
-
-# Compile the workflow into an executable graph
+# Compiled without a checkpointer — used by LangGraph Studio.
+# The FastAPI app compiles its own copy with AsyncPostgresSaver at startup.
 graph = workflow.compile()
-graph.name = "New Graph"  # This defines the custom name in LangSmith
+graph.name = "Chatbot"

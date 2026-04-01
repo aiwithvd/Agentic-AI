@@ -1,0 +1,58 @@
+services:
+  # ── Application ─────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override DB/Redis URLs to use Docker service names
+      DATABASE_URL: postgresql+asyncpg://agent:secret@db:5432/agentdb
+      CHECKPOINT_DATABASE_URL: postgresql://agent:secret@db:5432/agentdb
+      REDIS_URL: redis://redis:6379/0
+    # Run migrations then start the server
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn agent.api.app:app --host 0.0.0.0 --port 8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: agentdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent -d agentdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
