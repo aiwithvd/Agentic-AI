@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Annotated, List
+
+from langchain_core.messages import AnyMessage
+from langgraph.graph.message import add_messages
 
 
 @dataclass
 class State:
-    """Defines the input state for the agent, representing a narrower interface to the outside world.
+    """Agent state carrying the full conversation message history.
 
-    This class is used to define the initial state and structure of incoming data.
-    See: https://langchain-ai.github.io/langgraph/concepts/low_level/#state
-    for more information.
+    The `messages` field uses LangGraph's `add_messages` reducer so that
+    appending new messages never clobbers existing ones.
     """
 
-    changeme: str = "example"
+    messages: Annotated[List[AnyMessage], add_messages] = field(
+        default_factory=list
+    )

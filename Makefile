@@ -1,4 +1,5 @@
-.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests
+.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests \
+        serve migrate migrate-down migrate-autogenerate docker-up docker-down docker-logs
 
 # Default target executed when no arguments are given to make.
 all: help
@@ -53,15 +54,54 @@ spell_fix:
 	codespell --toml pyproject.toml -w
 
 ######################
+# SERVER
+######################
+
+serve:
+	uvicorn agent.api.app:app --host 0.0.0.0 --port 8000 --reload
+
+######################
+# DATABASE MIGRATIONS
+######################
+
+migrate:
+	alembic upgrade head
+
+migrate-down:
+	alembic downgrade -1
+
+migrate-autogenerate:
+	alembic revision --autogenerate -m "$(MSG)"
+
+######################
+# DOCKER
+######################
+
+docker-up:
+	docker compose up --build -d
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs -f app
+
+######################
 # HELP
 ######################
 
 help:
 	@echo '----'
-	@echo 'format                       - run code formatters'
-	@echo 'lint                         - run linters'
-	@echo 'test                         - run unit tests'
-	@echo 'tests                        - run unit tests'
-	@echo 'test TEST_FILE=<test_file>   - run all tests in file'
-	@echo 'test_watch                   - run unit tests in watch mode'
+	@echo 'format                          - run code formatters'
+	@echo 'lint                            - run linters'
+	@echo 'test                            - run unit tests'
+	@echo 'test TEST_FILE=<test_file>      - run all tests in file'
+	@echo 'test_watch                      - run unit tests in watch mode'
+	@echo 'serve                           - start FastAPI dev server (port 8000)'
+	@echo 'migrate                         - run alembic upgrade head'
+	@echo 'migrate-down                    - run alembic downgrade -1'
+	@echo 'migrate-autogenerate MSG=<msg>  - autogenerate a new migration'
+	@echo 'docker-up                       - build and start all services'
+	@echo 'docker-down                     - stop all services'
+	@echo 'docker-logs                     - tail app container logs'
 

@@ -1,21 +1,37 @@
 [project]
 name = "agent"
 version = "0.0.1"
-description = "Starter template for making a new agent LangGraph."
+description = "LangGraph chatbot agent with FastAPI serving layer."
 authors = [
     { name = "William Fu-Hinthorn", email = "13333726+hinthornw@users.noreply.github.com" },
 ]
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
+    # LangGraph / LangChain
     "langgraph>=0.2.6",
+    "langchain-anthropic>=0.1.23",
     "python-dotenv>=1.0.1",
+    # FastAPI stack
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.6",
+    "pydantic-settings>=2.4.0",
+    # Database — thread metadata
+    "sqlalchemy[asyncio]>=2.0.32",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.2",
+    # LangGraph checkpoint persistence (message history)
+    "langgraph-checkpoint-postgres>=2.0.6",
+    # Cache + rate limiting
+    "redis[hiredis]>=5.0.8",
 ]
 
+[project.scripts]
+serve = "agent.api.app:run"
 
 [project.optional-dependencies]
-dev = ["mypy>=1.11.1", "ruff>=0.6.1"]
+dev = ["mypy>=1.11.1", "ruff>=0.6.1", "pytest>=8.3.0", "pytest-asyncio>=0.23.0", "httpx>=0.27.0"]
 
 [build-system]
 requires = ["setuptools>=73.0.0", "wheel"]
